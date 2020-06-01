@@ -4,14 +4,16 @@ classdef Virus
     
     properties (Access = private)
         InfectionProbability
-        InfectionDuration        
+        InfectionDuration
+        DeathProbability
     end
     
     methods
-        function this = Virus(infectionDuration, infectionProbability)
+        function this = Virus(infectionDuration, infectionProbability, deathProbability)
             %VIRUS Construct an instance of this class
             this.InfectionProbability = infectionProbability;
             this.InfectionDuration = infectionDuration;
+            this.DeathProbability = deathProbability;
         end
         
         function res = getInfectionProbability(this)
@@ -20,6 +22,10 @@ classdef Virus
         
         function res = getInfectionDuration(this)
             res = this.InfectionDuration;
+        end
+        
+        function res = getDeathProbability(this)
+            res = this.DeathProbability;
         end
     end
 end

@@ -40,6 +40,8 @@ ix = zeros(1, city.getInfectiousCount());
 iy = zeros(1, city.getInfectiousCount());
 rx = zeros(1, city.getRecoveredCount());
 ry = zeros(1, city.getRecoveredCount());
+dx = zeros(1, city.getDeathCount());
+dy = zeros(1, city.getDeathCount());
 sc = 1;
 ic = 1;
 rc = 1;
@@ -59,36 +61,45 @@ for i = 1 : city.Population.length()
         rx(1, rc) = p.X;
         ry(1, rc) = p.Y;
         rc = rc + 1;
+     elseif p.isDeath()
+        dx(1, rc) = p.X;
+        dy(1, rc) = p.Y;
+        rc = rc + 1;
     end
 end
 
 scatter(cityAxes, sx, sy, 25, [0 0 1], 'filled');
 scatter(cityAxes, ix, iy, 25, [1 0 0], 'filled');
 scatter(cityAxes, rx, ry, 25, [0.4 0.4 0.4], 'filled');
+scatter(cityAxes, dx, dy, 2, [1 1 0],  'filled');
 
 
 % Luego dibuja la grafica de datos
 i = city.InfectiousByHour;
 r = city.RecoveredByHour;
+s = city.SusceptiblesByHour;
 
 cla(graphAxes);
 
 hold(graphAxes, 'on');
 % Pinta un cuadro en el fondo
 rh = city.getRealHour();
-pp = city.Population.length();
+%pp = city.Population.length();
 
 % Fixes for the first iteration
 if rh == 0
     rh = 1;
 end
 xaxis = linspace(0, rh / 24, rh + 1);
-area(graphAxes, [0 rh], [pp pp]);
+%area(graphAxes, [0 rh], [pp pp]);
 % Y luego pinta las otras graficas
+area(graphAxes, xaxis, r(2, :)+i(2, :)+s(2, :), 'FaceColor', [1 1 0]);
+
+area(graphAxes, xaxis, s(2, :), 'FaceColor', [0 0 1]);
 area(graphAxes, xaxis, r(2, :), 'FaceColor', [0.4 0.4 0.4]);
 area(graphAxes, xaxis, i(2, :), 'FaceColor', [1 0 0]);
 
-axis(graphAxes, [0, rh / 24, 0, pp]);
+%axis(graphAxes, [0, rh / 24, 0, pp]);
 
 end
 

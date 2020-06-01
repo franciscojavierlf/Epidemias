@@ -1,9 +1,10 @@
 clc; clear all;
 
 infectionDuration = 48; % 2 dias
-infectionProbability = 0.2;
+infectionProbability = 0.5;
+deathProbability = 0.01;
 
-covid19 = Virus(infectionDuration, infectionProbability);
+covid19 = Virus(infectionDuration, infectionProbability,deathProbability);
 
 firstInfected = 1;
 
