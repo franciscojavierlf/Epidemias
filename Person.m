@@ -54,11 +54,6 @@ classdef Person < handle
             this.InfectedHours = 0;
         end
         
-        function makeDeath(this)
-            this.Type = 'd';
-            this.InfectedHours = 0;
-        end
-        
         function res = isSusceptible(this)
             res = strcmp(this.Type, 's');
         end
@@ -69,10 +64,6 @@ classdef Person < handle
         
         function res = isRecovered(this)
             res = strcmp(this.Type, 'r');
-        end
-        
-        function res = isDeath(this)
-            res = strcmp(this.Type, 'd');
         end
     end
 end

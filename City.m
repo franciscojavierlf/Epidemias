@@ -10,7 +10,7 @@ classdef City < handle
         SusceptiblesByHour
         InfectiousByHour
         RecoveredByHour
-        DeathByHour
+        PopulationByHour
     end
     
     properties (Access = private)
@@ -20,10 +20,12 @@ classdef City < handle
         ReturnHouseProbability
         MaxLeaves
         
-        SusceptibleCount
-        InfectiousCount
-        RecoveredCount
-        DeathCount
+        OriginalPopulationSize
+        SusceptibleCount = 0
+        InfectiousCount = 0
+        RecoveredCount = 0
+        
+        InfectiousPeak = 1 % La hora donde hubo más infecciones
         
         CurrentHour = 0
         CurrentDay = 0
@@ -42,6 +44,7 @@ classdef City < handle
             this.ReturnHouseProbability = returnHouseProbability;
             this.MaxLeaves = maxLeaves;
             this.Virus = virus;
+            this.OriginalPopulationSize = populationSize;
             
             % Crea la ciudad
             this.buildCity(populationSize);
@@ -50,12 +53,12 @@ classdef City < handle
             this.createPopulation(populationSize, firstInfected);
         end
         
-        function res = getPeoplePerHome(this)
-            res = this.PeoplePerHome;
+        function res = getOriginalPopulationSize(this)
+            res = this.OriginalPopulationSize;
         end
         
-        function res = getfLeaveProbability(this)
-            res = this.LeaveProbability;
+        function res = getPeoplePerHome(this)
+            res = this.PeoplePerHome;
         end
         
         function res = getCurrentHour(this)
@@ -82,13 +85,43 @@ classdef City < handle
             res = this.RecoveredCount;
         end
         
-        function res = getDeathCount(this)
-            res = this.DeathCount;
-        end
-        
         % Da el total de horas contando dias
         function res = getRealHour(this)
             res = this.CurrentDay * 24 + this.CurrentHour;
+        end
+        
+        % Obtiene la tasa actual de transmisión
+        function beta = getInfectionRate(this)
+            % Solo existe cuando ha pasado un día
+            if this.CurrentDay >= 1
+                I0 = this.InfectiousByHour(2, 1);
+                I1 = this.InfectiousByHour(2, 25);
+                S0 = this.SusceptiblesByHour(2, 1);
+                dI0 = (I1 - I0) / I0;
+                beta = dI0 / (S0 * I0);
+            else
+                beta = NaN;
+            end
+        end
+        
+        % Obtiene la tasa actual de recuperados
+        function gamma = getRecoveryRate(this)
+            if this.CurrentDay >= 1
+                beta = this.getInfectionRate();
+                St_dot = this.InfectiousByHour(2, this.InfectiousPeak);
+                gamma = beta * St_dot;
+            else
+                gamma = NaN;
+            end
+        end
+        
+        % Obtiene el número básico de reproducciones de un infectado
+        function r0 = getBasicReproductionNumber(this)
+            r0 = this.getInfectionRate() / this.getRecoveryRate();
+        end
+        
+        function r = getReproductionNumber(this)
+            r = this.getBasicReproductionNumber() * this.SusceptibleCount;
         end
         
         
@@ -107,6 +140,7 @@ classdef City < handle
                 this.CurrentDay = this.CurrentDay + 1;
                 this.CurrentHour = 0;
             end
+            
             % Actualiza tiempo de enfermos por una hora
             this.updateSickPeople();
             % Mueve a las personas
@@ -131,22 +165,27 @@ classdef City < handle
         
         % Actualiza a los enfermos por una hora
         function updateSickPeople(this)
-            for i = 1 : this.Population.length()
+            % Tiene que ser while porque la longitud se actualiza
+            i = 1;
+            while i <= this.Population.length()
                 p = this.Population.getAt(i);
                 if p.isInfectious()
                     p.InfectedHours = p.InfectedHours + 1;
+                    
+                    % Puede recuperarse un enfermo
                     if p.InfectedHours >= this.Virus.getInfectionDuration()
                         p.makeRecovered();
                         this.InfectiousCount = this.InfectiousCount - 1;
                         this.RecoveredCount = this.RecoveredCount + 1;
-                    end
-                    if p.isInfectious && rand() < this.Virus.getDeathProbability
-                       p.makeDeath;
-                       this.InfectiousCount = this.InfectiousCount - 1;
-                       this.DeathCount = this.DeathCount + 1;
-                       %this.Population.remove(p.getId());
+                        
+                    % Pero también puede morir
+                    elseif rand() < this.Virus.getDeathProbability()
+                        this.Population.remove(p.getId);
+                        this.InfectiousCount = this.InfectiousCount - 1;
+                        i = i - 1;
                     end
                 end
+                i = i + 1;
             end
         end
         
@@ -184,7 +223,7 @@ classdef City < handle
                 p = this.Population.getAt(i);
                 prob = rand();
                 % Sale de su casa a un edificio
-                if p.isHome() && p.Leaves< this.MaxLeaves && prob < this.LeaveHouseProbability
+                if p.isHome() && p.Leaves < this.MaxLeaves && prob < this.LeaveHouseProbability
                     % Consigue un edificio random
                     index = ceil(randomBetween(0, this.NoHomes.length()));
                     b = this.NoHomes.getAt(index);
@@ -193,10 +232,8 @@ classdef City < handle
                         b = this.NoHomes.getAt(index);
                     end
                     % Y lo pone en el edificio
-                    if ~p.isDeath
-                        b.movePerson(p);
-                        p.Leaves = p.Leaves + 1;
-                    end
+                    b.movePerson(p);
+                    p.Leaves = p.Leaves + 1;
                 % Sale de un edificio a su casa
                 elseif ~p.isHome() && prob < this.ReturnHouseProbability
                     p.returnHome();
@@ -306,11 +343,10 @@ classdef City < handle
                 end
             end
             
-            % Actualiza los contadores
+            % Actualiza los contadores por primera vez
             this.SusceptibleCount = populationSize - firstInfected;
             this.InfectiousCount = firstInfected;
             this.RecoveredCount = 0;
-            this.DeathCount = 0;
             
             this.updateCountLists();
         end
@@ -321,7 +357,12 @@ classdef City < handle
             this.SusceptiblesByHour(:, rh + 1) = [rh; this.SusceptibleCount];
             this.InfectiousByHour(:, rh + 1) = [rh; this.InfectiousCount];
             this.RecoveredByHour(:, rh + 1) = [rh; this.RecoveredCount];
-            this.DeathByHour(:, rh + 1) = [rh; this.DeathCount];
+            this.PopulationByHour(:, rh + 1) = [rh; this.Population.length()];
+            
+            % Actualiza el índice del mayor número de infecciones
+            if this.InfectiousByHour(2, this.InfectiousPeak) < this.InfectiousCount
+                this.InfectiousPeak = rh + 1;
+            end
         end
     end
 end

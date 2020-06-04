@@ -109,22 +109,10 @@ f = @(t, Y) [
  
          
 % Valores iniciales
-hours = city.getRealHour();
-
-if hours < 1
-    hours = 1;
-end
-
-hoursInterval = 12;
-fixedHours = floor(hours / hoursInterval);
-Y0s = zeros(3, fixedHours);
-
-% Solo hace cuando hay suficientes datos
-for i = 1 : fixedHours
-    ss = city.SusceptiblesByHour(2, i * hoursInterval);
-    ii = city.InfectiousByHour(2, i * hoursInterval);
-    rr = city.RecoveredByHour(2, i * hoursInterval);
-    Y0s(:, i) = [ss, ii, rr];
+solutionsCount = 1;
+Y0s = zeros(3, city.get);
+for i = 1 : solutionsCount
+    Y0s(:, i) = [city.getSusceptibleCount(), city.getInfectiousCount(), city.getRecoveredCount()];
 end
 
          
@@ -180,6 +168,7 @@ end
 % Dibuja las flechas
 quiver3(portraitPhaseAxes, x, y, z, u, v, w, 'r');
 
-axis(portraitPhaseAxes, [0, city.getOriginalPopulationSize(), 0, city.getOriginalPopulationSize()]);
+pp = city.Population.length();
+axis(portraitPhaseAxes, [0, pp, 0, pp]);
 end
 
